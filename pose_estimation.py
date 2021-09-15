@@ -31,17 +31,47 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
         cameraMatrix=matrix_coefficients,
         distCoeff=distortion_coefficients)
 
+    is_location_drawn = False
+
     # If markers are detected
     if len(corners) > 0:
         for i in range(0, len(ids)):
             # Estimate pose of each marker and return the values rvec and tvec---(different from those of camera coefficients)
-            rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(corners[i], 0.02, matrix_coefficients,
+            rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(corners[i], 0.074, matrix_coefficients,
                                                                        distortion_coefficients)
+            (rvec - tvec).any()
             # Draw a square around the markers
             cv2.aruco.drawDetectedMarkers(frame, corners) 
 
             # Draw Axis
-            cv2.aruco.drawAxis(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.01)  
+            cv2.aruco.drawAxis(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.01)
+
+            # Draw location
+            topLeft, topRight, bottomRight, bottomLeft = corners[i].astype(int).reshape((4, 2))
+
+            tvec = [a for a in tvec[0][0]] # Rounded to two decimals
+            rvec = rvec[0][0]
+            location = str(ids[i]) + ", ".join(["{:.2f}".format(a) for a in tvec])
+            # rotation = ", ".join(["{:.2f}".format(a) for a in rvec[0][0]])
+
+            ### PROTOTYPE TO PRINT LOCATION OF CAMERA WHEN DETECTS ARUCO MARKER IN MAZE ###
+            absolute_location = ""
+            if ids[i]==1:
+                absolute_location = "(" + "{:.2f}".format(tvec[0]) + ", " + "{:.2f}".format(tvec[2]-0.12) + ")"
+            elif ids[i]==2:
+                absolute_location = "(" + "{:.2f}".format(tvec[2]-0.12) + ", " + "{:.2f}".format(tvec[0]) + ")"
+            elif ids[i]==6:
+                absolute_location = "(" + "{:.2f}".format(tvec[2]-0.12) + ", " + "{:.2f}".format(tvec[0]-0.232) + ")"
+            elif ids[i]==9:
+                absolute_location = "(" + "{:.2f}".format(tvec[0]+0.232) + ", " + "{:.2f}".format(tvec[2]-0.12) + ")"
+
+            if not is_location_drawn:
+                cv2.putText(frame, absolute_location, (5, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
+                is_location_drawn = True
+
+
+            cv2.putText(frame, location, (topLeft[0], topLeft[1]-15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            # cv2.putText(frame, rotation, (bottomLeft[0], bottomLeft[1]+15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
     return frame
 
