@@ -11,6 +11,14 @@ from utils import ARUCO_DICT
 import argparse
 import time
 
+# Sample Maze Layout:
+#    1 2
+#  8     3
+#  7     4
+#    6 5
+maze = [[0, 1, 2, 0], [8, 0, 0, 3], [7, 0, 0, 4], [0, 6, 5, 0]]
+maze_ids = [[1, 0, 1], [2, 0, 2], [3, 1, 3], [4, 2, 3], [5, 3, 2], [6, 3, 1], [7, 2, 0], [8, 2, 0]]
+
 
 def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coefficients):
 
@@ -55,15 +63,21 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             # rotation = ", ".join(["{:.2f}".format(a) for a in rvec[0][0]])
 
             ### PROTOTYPE TO PRINT LOCATION OF CAMERA WHEN DETECTS ARUCO MARKER IN MAZE ###
+
             absolute_location = ""
-            if ids[i]==1:
-                absolute_location = "(" + "{:.2f}".format(tvec[0]) + ", " + "{:.2f}".format(tvec[2]-0.12) + ")"
-            elif ids[i]==2:
-                absolute_location = "(" + "{:.2f}".format(tvec[2]-0.12) + ", " + "{:.2f}".format(tvec[0]) + ")"
-            elif ids[i]==6:
-                absolute_location = "(" + "{:.2f}".format(tvec[2]-0.12) + ", " + "{:.2f}".format(tvec[0]-0.232) + ")"
-            elif ids[i]==9:
-                absolute_location = "(" + "{:.2f}".format(tvec[0]+0.232) + ", " + "{:.2f}".format(tvec[2]-0.12) + ")"
+            if len(absolute_location)==0:
+                for j in range(len(maze_ids)):
+                    if ids[i]==maze_ids[j][0]:
+                        if maze_ids[j][1]==0: # Facing North
+                            absolute_location = "(" + "{:.2f}".format(tvec[2]-0.12) + ", " + "{:.2f}".format(tvec[0] - 0.232 * (maze_ids[j][2] - 1)) + ")"
+                        elif maze_ids[j][2]==len(maze)-1: # Facing East
+                            absolute_location = "(" + "{:.2f}".format(25.4 * (len(maze)-2) - tvec[0] - 0.232 * (maze_ids[j][2] - 1)) + ", " + "{:.2f}".format(25.4 * (len(maze)-2) - tvec[2] + 0.12) + ")"
+                        elif maze_ids[j][1]==len(maze)-1: # Facing South
+                            absolute_location = "(" + "{:.2f}".format(25.4 * (len(maze)-2) - tvec[2] + 0.12) + ", " + "{:.2f}".format(25.4 * (len(maze)-2) - tvec[0] + 0.232 * (maze_ids[j][2] - 1)) + ")"
+                        else: # Facing West
+                            absolute_location = "(" + "{:.2f}".format(tvec[0] + 0.232 * (maze_ids[j][2] - 1)) + ", " + "{:.2f}".format(tvec[2] - 0.12) + ")"
+                        break
+
 
             if not is_location_drawn:
                 cv2.putText(frame, absolute_location, (5, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
