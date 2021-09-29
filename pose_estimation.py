@@ -1,6 +1,6 @@
 '''
 Sample Usage:-
-python pose_estimation.py --K_Matrix calibration_matrix.npy --D_Coeff distortion_coefficients.npy --type DICT_5X5_100
+python pose_estimation.py --K_Matrix calibration_matrix.npy --D_Coeff distortion_coefficients.npy --type DICT_5X5_100 --Aruco maze.txt
 '''
 
 
@@ -16,11 +16,10 @@ import time
 #  8     3
 #  7     4
 #    6 5
-maze = [[0, 1, 2, 0], [8, 0, 0, 3], [7, 0, 0, 4], [0, 6, 5, 0]]
-maze_ids = [[1, 0, 1], [2, 0, 2], [3, 1, 3], [4, 2, 3], [5, 3, 2], [6, 3, 1], [7, 2, 0], [8, 2, 0]]
+# maze_ids = [[1, 0, 1], [2, 0, 2], [3, 1, 3], [4, 2, 3], [5, 3, 2], [6, 3, 1], [7, 2, 0], [8, 2, 0]]
 
 
-def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coefficients):
+def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coefficients, maze_ids):
 
     '''
     frame - Frame from the video stream
@@ -94,12 +93,13 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument("-k", "--K_Matrix", required=True, help="Path to calibration matrix (numpy file)")
     ap.add_argument("-d", "--D_Coeff", required=True, help="Path to distortion coefficients (numpy file)")
+    ap.add_argument("-a", "--Aruco", required=True, type=str, help=".txt file of arrangement of ArUco markers")
     ap.add_argument("-t", "--type", type=str, default="DICT_4X4_50", help="Type of ArUCo tag to detect")
     args = vars(ap.parse_args())
 
     
     if ARUCO_DICT.get(args["type"], None) is None:
-        print(f"ArUCo tag type '{args['type']}' is not supported")
+        print("ArUCo tag type '{args['type']}' is not supported")
         sys.exit(0)
 
     aruco_dict_type = ARUCO_DICT[args["type"]]
@@ -108,6 +108,50 @@ if __name__ == '__main__':
     
     k = np.load(calibration_matrix_path)
     d = np.load(distortion_coefficients_path)
+
+    aruco_markers_file = open(args["Aruco"], 'r')
+    maze = aruco_markers_file.readlines()
+    maze_id_count = []
+    aruco_id = ""
+    x = 1
+    for i in maze[0]:
+        if '1' <= i <= '9':
+            aruco_id += i
+        elif len(aruco_id) > 0 or i==len(maze[0])-1:
+            maze_id_count.append([int(aruco_id), 0, x])
+            x+=1
+            aruco_id = ""
+    y = x
+    x = 1
+    for i in maze[len(maze)-1]:
+        if '1' <= i <= '9':
+            aruco_id += i
+        elif len(aruco_id) > 0 or i==len(maze[len(maze) - 1])-1:
+            maze_id_count.append([int(aruco_id), len(maze) - 1, x])
+            x += 1
+            aruco_id = ""
+    if x != y:
+        raise ValueError('Number of aruco markers in 1st and last row are not equal')
+    for i in range(1, len(maze)-1):
+        x = 0
+        cur_id_size = len(maze_id_count)
+        for j in maze[i]:
+            if '1' <= j <= '9':
+                aruco_id += j
+            elif len(aruco_id) > 0:
+                maze_id_count.append([int(aruco_id), i, x])
+                x = y
+                aruco_id = ""
+
+        if len(aruco_id) > 0:
+            maze_id_count.append([int(aruco_id), i, x])
+            aruco_id = ""
+
+        if len(maze_id_count) - cur_id_size != 2:
+            raise ValueError('Row ' + str(i) + ' does not have exactly 2 ids')
+
+    for x in maze_id_count:
+        print(str(x[0]) + ", " + str(x[1]) + ", " + str(x[2]))
 
     video = cv2.VideoCapture(2)
     time.sleep(2.0)
@@ -118,7 +162,7 @@ if __name__ == '__main__':
         if not ret:
             break
         
-        output = pose_estimation(frame, aruco_dict_type, k, d)
+        output = pose_estimation(frame, aruco_dict_type, k, d, maze_id_count)
 
         cv2.imshow('Estimated Pose', output)
 
