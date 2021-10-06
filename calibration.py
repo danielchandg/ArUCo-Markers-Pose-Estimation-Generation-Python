@@ -9,7 +9,7 @@ import os
 import argparse
 
 
-def calibrate(dirpath, square_size, width=9, height=6, visualize=False):
+def calibrate(dirpath, square_size, width=5, height=5, visualize=False):
     """ Apply camera calibration operation for images in the given directory path. """
 
     # termination criteria
@@ -28,6 +28,8 @@ def calibrate(dirpath, square_size, width=9, height=6, visualize=False):
     images = os.listdir(dirpath)
 
     for fname in images:
+
+        print("Looking for chessboard in " + fname)
         img = cv2.imread(os.path.join(dirpath, fname))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -36,6 +38,7 @@ def calibrate(dirpath, square_size, width=9, height=6, visualize=False):
 
         # If found, add object points, image points (after refining them)
         if ret:
+            print("Found chessboard in " + fname)
             objpoints.append(objp)
 
             corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)

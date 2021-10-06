@@ -16,7 +16,7 @@ import time
 #  8     3
 #  7     4
 #    6 5
-# maze_ids = [[1, 0, 1], [2, 0, 2], [3, 1, 3], [4, 2, 3], [5, 3, 2], [6, 3, 1], [7, 2, 0], [8, 2, 0]]
+# maze_ids = [[1, 0, 1], [2, 0, 2], [3, 1, 3], [4, 2, 3], [5, 3, 2], [6, 3, 1], [7, 2, 0], [8, 1, 0]]
 
 
 def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coefficients, maze_ids):
@@ -39,8 +39,10 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
         distCoeff=distortion_coefficients)
 
     is_location_drawn = False
+    absolute_location = ""
 
     # If markers are detected
+
     if len(corners) > 0:
         for i in range(0, len(ids)):
             # Estimate pose of each marker and return the values rvec and tvec---(different from those of camera coefficients)
@@ -56,34 +58,40 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             # Draw location
             topLeft, topRight, bottomRight, bottomLeft = corners[i].astype(int).reshape((4, 2))
 
-            tvec = [a for a in tvec[0][0]] # Rounded to two decimals
+            tvec = tvec[0][0]
             rvec = rvec[0][0]
             location = str(ids[i]) + ", ".join(["{:.2f}".format(a) for a in tvec])
             # rotation = ", ".join(["{:.2f}".format(a) for a in rvec[0][0]])
 
             ### PROTOTYPE TO PRINT LOCATION OF CAMERA WHEN DETECTS ARUCO MARKER IN MAZE ###
 
-            absolute_location = ""
-            if len(absolute_location)==0:
+
+
+            x = 1.1168 + 0.6126*tvec[0] + 1.423*tvec[2] - 0.4916*rvec[0] - 0.2856*rvec[1] + 0.4777*rvec[2]
+            y = 9.1582 + 10.7215*tvec[0] + 4.239*tvec[2] - 3.662*rvec[0] - 2.61*rvec[1] - 1.8533*rvec[2]
+
+            if len(absolute_location) == 0:
                 for j in range(len(maze_ids)):
-                    if ids[i]==maze_ids[j][0]:
+                    if ids[i] == maze_ids[j][0]:
+                        x = 1.883 + 1.209*tvec[2] - 0.716*rvec[0] + 0.763*rvec[2]
+                        y = -1.128 + 6.423*tvec[0] + 2.727*tvec[2] - 1.849*rvec[2]
                         if maze_ids[j][1]==0: # Facing North
-                            absolute_location = "(" + "{:.2f}".format(tvec[2]-0.12) + ", " + "{:.2f}".format(tvec[0] - 0.232 * (maze_ids[j][2] - 1)) + ")"
+                            absolute_location = "(" + "{:.2f}".format(x) + ", " + "{:.2f}".format(y + maze_ids[j][2] - 1) + ")"
                         elif maze_ids[j][2]==len(maze)-1: # Facing East
-                            absolute_location = "(" + "{:.2f}".format(25.4 * (len(maze)-2) - tvec[0] - 0.232 * (maze_ids[j][2] - 1)) + ", " + "{:.2f}".format(25.4 * (len(maze)-2) - tvec[2] + 0.12) + ")"
+                            absolute_location = "(" + "{:.2f}".format(maze_rows - y - maze_ids[j][2] + 1) + ", " + "{:.2f}".format(maze_columns - x) + ")"
                         elif maze_ids[j][1]==len(maze)-1: # Facing South
-                            absolute_location = "(" + "{:.2f}".format(25.4 * (len(maze)-2) - tvec[2] + 0.12) + ", " + "{:.2f}".format(25.4 * (len(maze)-2) - tvec[0] + 0.232 * (maze_ids[j][2] - 1)) + ")"
+                            absolute_location = "(" + "{:.2f}".format(maze_rows - x) + ", " + "{:.2f}".format(maze_columns - y - maze_ids[j][2] + 1) + ")"
                         else: # Facing West
-                            absolute_location = "(" + "{:.2f}".format(tvec[0] + 0.232 * (maze_ids[j][2] - 1)) + ", " + "{:.2f}".format(tvec[2] - 0.12) + ")"
+                            absolute_location = "(" + "{:.2f}".format(y + maze_ids[j][1] - 1) + ", " + "{:.2f}".format(x) + ")"
                         break
 
+            # absolute_location = "tvec: (" + "{:.2f}".format(tvec[0]) + ", " + "{:.2f}".format(tvec[1]) + ", " + "{:.2f}".format(tvec[2]) + ")\nrvec: (" + "{:.2f}".format(rvec[0]) + ", " + "{:.2f}".format(rvec[1]) + ", " + "{:.2f}".format(rvec[2]) + ")"
 
             if not is_location_drawn:
                 cv2.putText(frame, absolute_location, (5, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
-                is_location_drawn = True
 
 
-            cv2.putText(frame, location, (topLeft[0], topLeft[1]-15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            # cv2.putText(frame, location, (topLeft[0], topLeft[1]-15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             # cv2.putText(frame, rotation, (bottomLeft[0], bottomLeft[1]+15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
     return frame
@@ -117,19 +125,37 @@ if __name__ == '__main__':
     for i in maze[0]:
         if '1' <= i <= '9':
             aruco_id += i
-        elif len(aruco_id) > 0 or i==len(maze[0])-1:
+        elif len(aruco_id) > 0:
             maze_id_count.append([int(aruco_id), 0, x])
-            x+=1
+            x += 1
+            # print("found aruco marker " + aruco_id + " in 1st row")
             aruco_id = ""
+
+    if len(aruco_id) > 0:
+        maze_id_count.append([int(aruco_id), 0, x])
+        x += 1
+        # print("found aruco marker " + aruco_id + " in 1st row")
+        aruco_id = ""
+    maze_columns = len(maze_id_count)-1
+    maze_rows = len(maze)-3
     y = x
     x = 1
+
     for i in maze[len(maze)-1]:
         if '1' <= i <= '9':
             aruco_id += i
-        elif len(aruco_id) > 0 or i==len(maze[len(maze) - 1])-1:
+        elif len(aruco_id) > 0:
             maze_id_count.append([int(aruco_id), len(maze) - 1, x])
             x += 1
+            # print("found aruco marker a" + aruco_id + " in last row")
             aruco_id = ""
+
+    if len(aruco_id) > 0:
+        maze_id_count.append([int(aruco_id), len(maze)-1, x])
+        # print("found aruco marker " + aruco_id + " in last row")
+        aruco_id = ""
+        x += 1
+
     if x != y:
         raise ValueError('Number of aruco markers in 1st and last row are not equal')
     for i in range(1, len(maze)-1):
@@ -150,10 +176,10 @@ if __name__ == '__main__':
         if len(maze_id_count) - cur_id_size != 2:
             raise ValueError('Row ' + str(i) + ' does not have exactly 2 ids')
 
-    for x in maze_id_count:
-        print(str(x[0]) + ", " + str(x[1]) + ", " + str(x[2]))
+    # for x in maze_id_count:
+    #     print(str(x[0]) + ", " + str(x[1]) + ", " + str(x[2]))
 
-    video = cv2.VideoCapture(2)
+    video = cv2.VideoCapture(1)
     time.sleep(2.0)
 
     while True:
